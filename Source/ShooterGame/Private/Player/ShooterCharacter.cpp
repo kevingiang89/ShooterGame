@@ -10,6 +10,8 @@
 #include "Sound/SoundNodeLocalPlayer.h"
 #include "AudioThread.h"
 
+#include "KevinGiang/ShooterGameGrenade.h"
+
 static int32 NetVisualizeRelevancyTestPoints = 0;
 FAutoConsoleVariableRef CVarNetVisualizeRelevancyTestPoints(
 	TEXT("p.NetVisualizeRelevancyTestPoints"),
@@ -67,6 +69,8 @@ AShooterCharacter::AShooterCharacter(const FObjectInitializer& ObjectInitializer
 
 	BaseTurnRate = 45.f;
 	BaseLookUpRate = 45.f;
+
+    LaunchGrenadeInputActionName = "Grenade";
 }
 
 void AShooterCharacter::PostInitializeComponents()
@@ -860,7 +864,7 @@ void AShooterCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerI
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AShooterCharacter::LookUpAtRate);
 
 	AShooterPlayerController* MyPC = Cast<AShooterPlayerController>(Controller);
-	if (MyPC->bAnalogFireTrigger)
+	if (MyPC && MyPC->bAnalogFireTrigger)
 	{
 		PlayerInputComponent->BindAxis("FireTrigger", this, &AShooterCharacter::FireTrigger);
 	}
@@ -884,6 +888,8 @@ void AShooterCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerI
 	PlayerInputComponent->BindAction("Run", IE_Pressed, this, &AShooterCharacter::OnStartRunning);
 	PlayerInputComponent->BindAction("RunToggle", IE_Pressed, this, &AShooterCharacter::OnStartRunningToggle);
 	PlayerInputComponent->BindAction("Run", IE_Released, this, &AShooterCharacter::OnStopRunning);
+
+    PlayerInputComponent->BindAction(*LaunchGrenadeInputActionName, EInputEvent::IE_Pressed, this, &AShooterCharacter::OnLaunchGrenadeInputActionPressed);
 }
 
 
@@ -1323,4 +1329,25 @@ void AShooterCharacter::BuildPauseReplicationCheckPoints(TArray<FVector>& Releva
 	RelevancyCheckPoints.Add(FVector(BoundingBox.Max.X, BoundingBox.Max.Y - YDiff, BoundingBox.Max.Z));
 	RelevancyCheckPoints.Add(FVector(BoundingBox.Max.X - XDiff, BoundingBox.Max.Y - YDiff, BoundingBox.Max.Z));
 	RelevancyCheckPoints.Add(BoundingBox.Max);
+}
+
+void AShooterCharacter::OnLaunchGrenadeInputActionPressed()
+{
+    if (GetWorld() && ShooterGameGrenadeClass)
+    {
+        FTransform GrenadeSpawnTransform = FTransform::Identity;
+        GrenadeSpawnTransform.SetLocation(GetActorLocation());
+
+        FActorSpawnParameters SpawnParams;
+        SpawnParams.Owner = this;
+        SpawnParams.Instigator = this;
+
+        if (AShooterGameGrenade* SpawnedGrenade = GetWorld()->SpawnActor<AShooterGameGrenade>(ShooterGameGrenadeClass, GrenadeSpawnTransform, SpawnParams))
+        {
+            if (UPrimitiveComponent* RootPrimitiveComponent = Cast<UPrimitiveComponent>(SpawnedGrenade->GetRootComponent()))
+            {
+                RootPrimitiveComponent->AddImpulse(GrenadeLaunchVector.GetSafeNormal() * GrenadeTossStrength);
+            }
+        }
+    }
 }
