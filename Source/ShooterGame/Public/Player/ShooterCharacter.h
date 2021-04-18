@@ -512,8 +512,5 @@ private:
 private:
     UFUNCTION()
     void OnLaunchGrenadeInputActionPressed();
-
-    UFUNCTION()
-    void ApplyImpulseToActor(class AActor* InActor, FVector Impulse);
 #endif // Shooter Game Kevin Character
 };

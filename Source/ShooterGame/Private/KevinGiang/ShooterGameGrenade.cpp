@@ -20,8 +20,8 @@ AShooterGameGrenade::AShooterGameGrenade(const FObjectInitializer& ObjectInitial
     ExplosionRadiusSphereComponent->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
     ExplosionRadiusSphereComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
 
-    BlastTraceChannel = ECC_GameTraceChannel4; // Should be set to Blast visibility channel
-
+    BlastTraceChannel = COLLISION_BLAST;
+    ExposionVFXScale = FVector::OneVector;
 }
 
 void AShooterGameGrenade::BeginPlay()
@@ -39,6 +39,20 @@ void AShooterGameGrenade::BeginPlay()
             Detonate();
         }
     }
+    
+    UpdateExplosionRadiusSphereComponent();
+}
+
+float AShooterGameGrenade::GetDetonationTimerRemaining() const
+{
+    float TimeRemaining = 0.0f;
+
+    if (GetWorld())
+    {
+        TimeRemaining = GetWorld()->GetTimerManager().GetTimerRemaining(DetonationTimer);
+    }
+
+    return TimeRemaining;
 }
 
 #if WITH_EDITOR
@@ -46,6 +60,13 @@ void AShooterGameGrenade::PostEditChangeProperty(struct FPropertyChangedEvent& P
 {
     Super::PostEditChangeProperty(PropertyChangedEvent);
 
+    // Update sphere radius for debugging
+    UpdateExplosionRadiusSphereComponent();
+}
+#endif WITH_EDITOR
+
+void AShooterGameGrenade::UpdateExplosionRadiusSphereComponent()
+{
     if (ExplosionRadiusSphereComponent)
     {
         // Show explosion radius in-game if debug mode is on
@@ -59,7 +80,6 @@ void AShooterGameGrenade::PostEditChangeProperty(struct FPropertyChangedEvent& P
         }
     }
 }
-#endif WITH_EDITOR
 
 void AShooterGameGrenade::Detonate()
 {
@@ -89,11 +109,26 @@ void AShooterGameGrenade::Detonate()
             CollisionQueryParams
         );
 
-        // If the first thing we hit is the overlapped actor, then damage is valid
         bool bDamageBlocked = true; // Assume blocked initially
-        if ((HitResults.Num() > 0) && (HitResults[0].Actor == OverlappedActor))
+
+        // Damage should not be blocked until we hit a non-Pawn actor AND
+        // if we never reached the overlapped actor. This will account for
+        // tracing past other pawns that we aren't interested in
+        for (FHitResult HitResult : HitResults)
         {
-            bDamageBlocked = false;
+            if (HitResult.Actor != nullptr)
+            {
+                // If we reached the overlapped actor, then we can damage it
+                if (HitResult.Actor == OverlappedActor)
+                {
+                    bDamageBlocked = false;
+                }
+                // If the hitactor is not a pawn, then stop tracing
+                else if (!HitResult.Actor->IsA<APawn>())
+                {
+                    break;
+                }
+            }
         }
 
         if (bDamageBlocked == false)
@@ -126,9 +161,16 @@ void AShooterGameGrenade::Detonate()
         UNiagaraFunctionLibrary::SpawnSystemAtLocation(
             this,
             ExplosionVFX,
-            GetActorLocation()
+            GetActorLocation(),
+            FRotator::ZeroRotator,
+            ExposionVFXScale
         );
     }
 
     Destroy();
+}
+
+bool AShooterGameGrenade::GetDebugEnabled() const
+{
+    return bEnableDebug;
 }

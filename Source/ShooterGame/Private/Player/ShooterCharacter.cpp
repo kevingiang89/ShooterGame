@@ -59,6 +59,7 @@ AShooterCharacter::AShooterCharacter(const FObjectInitializer& ObjectInitializer
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(COLLISION_PROJECTILE, ECR_Block);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(COLLISION_WEAPON, ECR_Ignore);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(COLLISION_BLAST, ECR_Overlap);
 
 	TargetingSpeedModifier = 0.5f;
 	bIsTargeting = false;
@@ -1344,37 +1345,24 @@ void AShooterCharacter::OnLaunchGrenadeInputActionPressed()
         SpawnParams.Owner = this;
         SpawnParams.Instigator = this;
 
+        // Get relative launch rotation so we can get the impulse vector
         FRotator LaunchRotation(
             GetControlRotation().Pitch + GrenadeLaunchPitchAngle, 
             GetActorRotation().Yaw, 
             0.0f
         );
 
+        // Get spawn location from the component in the actor
         FTransform GrenadeSpawnTransform;
         GrenadeSpawnTransform.SetLocation(GrenadeSpawnLocationComponent->GetComponentLocation());
 
         // Spawn grenade and then apply impulse on it to launch it forwards from the character
         if (AShooterGameGrenade* SpawnedGrenade = GetWorld()->SpawnActor<AShooterGameGrenade>(ShooterGameGrenadeClass, GrenadeSpawnTransform, SpawnParams))
         {
-            FTimerDelegate TimerDelegate = FTimerDelegate::CreateUObject(
-                this,
-                &AShooterCharacter::ApplyImpulseToActor,
-                Cast<AActor>(SpawnedGrenade),
-                LaunchRotation.Vector() * GrenadeTossStrength
-            );
-
-            GetWorld()->GetTimerManager().SetTimerForNextTick(TimerDelegate);
-        }
-    }
-}
-
-void AShooterCharacter::ApplyImpulseToActor(AActor* InActor, FVector Impulse)
-{
-    if (InActor)
-    {
-        if (UPrimitiveComponent* RootPrimitiveComponent = Cast<UPrimitiveComponent>(InActor->GetRootComponent()))
-        {
-            RootPrimitiveComponent->AddImpulse(Impulse);
+            if (UPrimitiveComponent* RootPrimitiveComponent = Cast<UPrimitiveComponent>(SpawnedGrenade->GetRootComponent()))
+            {
+                RootPrimitiveComponent->AddImpulse(LaunchRotation.Vector() * GrenadeTossStrength);
+            }
         }
     }
 }
