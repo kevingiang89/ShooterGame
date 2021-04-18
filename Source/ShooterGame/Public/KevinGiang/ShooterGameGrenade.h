@@ -49,6 +49,8 @@ public:
 #if 1 // Actor Interface
 protected:
     virtual void BeginPlay() override;
+
+    virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif // Actor Interface
 
 #if 1 // Shooter Game Grenade
@@ -56,14 +58,21 @@ private:
     UPROPERTY(Category = "Grenade", EditAnywhere, meta = (AllowPrivateAccess))
     class UStaticMeshComponent* GrenadeStaticMeshComponent;
 
-    UPROPERTY(Category = "Grenade", EditAnywhere, meta = (AllowPrivateAccess))
+    /** 
+     * Collision component for handling damage against other actors 
+     * Radius is affected by DamageCurve where the max X-Value is the Radius
+     */
+    UPROPERTY()
     class USphereComponent* ExplosionRadiusSphereComponent;
-
 #endif // Shooter Game Grenade
 
 #if 1 // Gameplay
 private:
-    /** Damage curve for scaling damage based on distance */
+    /**
+     * Damage curve for scaling damage based on distance 
+     * X-Value: Radius in Unreal Units
+     * Y-Value: Damage to apply
+     */
     UPROPERTY(Category = "Grenade|Gameplay", EditAnywhere)
     UCurveFloat* DamageCurve;
 
@@ -74,6 +83,9 @@ private:
     /** Timer to manage detonation delay */
     FTimerHandle DetonationTimer;
 
+    UPROPERTY(Category = "Grenade|Gameplay", EditAnywhere, meta = (AllowPrivateAccess))
+    TEnumAsByte<ECollisionChannel> BlastTraceChannel;
+
 private:
     /** 
      * Detonates the grenade and deals damage to all damageable 
@@ -83,9 +95,19 @@ private:
     void Detonate();
 #endif // Gameplay
 
-#if 1 // SFX
+#if 1 // VFX/SFX
 private:
+    UPROPERTY(Category = "Grenade|VFX", EditAnywhere)
+    class UNiagaraSystem* ExplosionVFX;
+
     UPROPERTY(Category = "Grenade|SFX", EditAnywhere)
     FShooterGameGrenadeSoundSettings ExplosionSoundSettings;
 #endif // SFX
+
+#if 1 // Debuggger
+private:
+    /** Flag for enabling debug features for the grenade */
+    UPROPERTY(Category = "Grenade|Debug", EditAnywhere)
+    bool bEnableDebug;
+#endif // Debugger
 };

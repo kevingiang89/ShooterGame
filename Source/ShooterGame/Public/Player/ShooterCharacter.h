@@ -486,8 +486,12 @@ protected:
 	/** Returns Mesh1P subobject **/
 	FORCEINLINE USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
 
-
 #if 1 // Shooter Game Kevin Character
+private:
+    /** Scene component for easy adjustment of where the grenade will spawn relative to the character */
+    UPROPERTY(Category = "Game|Grenade", EditAnywhere, meta = (AllowPrivateAccess))
+    class USceneComponent* GrenadeSpawnLocationComponent;
+
 private:
     /** Class of the grenade that will be launched by this character */
     UPROPERTY(Category = "Game|Grenade", EditAnywhere, meta = (AllowPrivateAccess))
@@ -497,14 +501,19 @@ private:
     UPROPERTY(Category = "Game|Grenade", EditDefaultsOnly)
     FString LaunchGrenadeInputActionName;
 
-    /** Relative launch vector from the character's facing direction for the grenade when spawned */
-    FVector GrenadeLaunchVector;
-
     /** Impulse strength to apply to the grenade that was spawned */
+    UPROPERTY(Category = "Game|Grenade", EditAnywhere, meta = (AllowPrivateAccess))
     float GrenadeTossStrength;
+
+    /** Additional Pitch Angle in degrees to launch the grenade relative to the character's facing direction */
+    UPROPERTY(Category = "Game|Grenade", EditAnywhere, meta = (AllowPrivateAccess))
+    float GrenadeLaunchPitchAngle;
 
 private:
     UFUNCTION()
     void OnLaunchGrenadeInputActionPressed();
-#endif 1 // Shooter Game Kevin Character
+
+    UFUNCTION()
+    void ApplyImpulseToActor(class AActor* InActor, FVector Impulse);
+#endif // Shooter Game Kevin Character
 };

@@ -49,7 +49,8 @@ public class ShooterGame : ModuleRules
 				"ReplicationGraph",
 				"PakFile",
 				"RHI",
-				"PhysicsCore"
+				"PhysicsCore",
+                "Niagara"
 			}
 		);
 

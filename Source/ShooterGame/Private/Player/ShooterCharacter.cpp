@@ -71,6 +71,10 @@ AShooterCharacter::AShooterCharacter(const FObjectInitializer& ObjectInitializer
 	BaseLookUpRate = 45.f;
 
     LaunchGrenadeInputActionName = "Grenade";
+    GrenadeTossStrength = 500.0f;
+    GrenadeSpawnLocationComponent = ObjectInitializer.CreateDefaultSubobject<USceneComponent>(this, TEXT("GrenadeSpawnLocationComponent"));
+    GrenadeSpawnLocationComponent->SetupAttachment(GetRootComponent());
+    GrenadeSpawnLocationComponent->SetRelativeTransform(FTransform::Identity);
 }
 
 void AShooterCharacter::PostInitializeComponents()
@@ -1333,21 +1337,44 @@ void AShooterCharacter::BuildPauseReplicationCheckPoints(TArray<FVector>& Releva
 
 void AShooterCharacter::OnLaunchGrenadeInputActionPressed()
 {
-    if (GetWorld() && ShooterGameGrenadeClass)
+    if (GetWorld() && ShooterGameGrenadeClass && GrenadeSpawnLocationComponent)
     {
-        FTransform GrenadeSpawnTransform = FTransform::Identity;
-        GrenadeSpawnTransform.SetLocation(GetActorLocation());
-
+        // Set up spawn parameters
         FActorSpawnParameters SpawnParams;
         SpawnParams.Owner = this;
         SpawnParams.Instigator = this;
 
+        FRotator LaunchRotation(
+            GetControlRotation().Pitch + GrenadeLaunchPitchAngle, 
+            GetActorRotation().Yaw, 
+            0.0f
+        );
+
+        FTransform GrenadeSpawnTransform;
+        GrenadeSpawnTransform.SetLocation(GrenadeSpawnLocationComponent->GetComponentLocation());
+
+        // Spawn grenade and then apply impulse on it to launch it forwards from the character
         if (AShooterGameGrenade* SpawnedGrenade = GetWorld()->SpawnActor<AShooterGameGrenade>(ShooterGameGrenadeClass, GrenadeSpawnTransform, SpawnParams))
         {
-            if (UPrimitiveComponent* RootPrimitiveComponent = Cast<UPrimitiveComponent>(SpawnedGrenade->GetRootComponent()))
-            {
-                RootPrimitiveComponent->AddImpulse(GrenadeLaunchVector.GetSafeNormal() * GrenadeTossStrength);
-            }
+            FTimerDelegate TimerDelegate = FTimerDelegate::CreateUObject(
+                this,
+                &AShooterCharacter::ApplyImpulseToActor,
+                Cast<AActor>(SpawnedGrenade),
+                LaunchRotation.Vector() * GrenadeTossStrength
+            );
+
+            GetWorld()->GetTimerManager().SetTimerForNextTick(TimerDelegate);
+        }
+    }
+}
+
+void AShooterCharacter::ApplyImpulseToActor(AActor* InActor, FVector Impulse)
+{
+    if (InActor)
+    {
+        if (UPrimitiveComponent* RootPrimitiveComponent = Cast<UPrimitiveComponent>(InActor->GetRootComponent()))
+        {
+            RootPrimitiveComponent->AddImpulse(Impulse);
         }
     }
 }
