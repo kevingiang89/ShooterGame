@@ -31,10 +31,11 @@ public:
 
     FShooterGameGrenadeSoundSettings()
     {
+        SoundCue = nullptr;
         VolumeMultiplier = 1.0f;
         PitchMultiplier = 1.0f;
         AttenuationSettings = nullptr;
-        AttenuationSettings = nullptr;
+        Concurrency = nullptr;
     }
 };
 
